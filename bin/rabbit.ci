@@ -1,0 +1,303 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly RABBIT_CI_VERSION="0.1.0"
+readonly CONTRACT_VERSION="rabbit.ci/repo/v1"
+readonly CONTRACT_RELATIVE_PATH=".rabbit/repo.yaml"
+
+usage() {
+  cat <<'EOF'
+Usage: rabbit.ci [--json] [--check] [path]
+
+Generate a portable Rabbit CI repository contract and report the context an
+approved integration may safely use. `path` defaults to the current repository.
+
+Options:
+  --json   Emit the integration report as JSON.
+  --check  Validate an existing .rabbit/repo.yaml without changing it.
+  -h, --help
+  -v, --version
+
+The command only writes .rabbit/repo.yaml. GitHub discovery is read-only and
+runs only when the repository has a GitHub origin and the `gh` CLI can access it.
+EOF
+}
+
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+json_string() {
+  printf '"%s"' "$(json_escape "$1")"
+}
+
+yaml_string() {
+  local value="$1"
+  value="${value//\'/\'\'}"
+  printf "'%s'" "$value"
+}
+
+repo_root() {
+  local target="$1"
+  if [ -d "$target" ]; then
+    printf '%s\n' "$(cd "$target" && pwd)"
+    return 0
+  fi
+  printf 'path is not a directory: %s\n' "$target" >&2
+  return 1
+}
+
+git_value() {
+  local root="$1"
+  shift
+  git -C "$root" "$@" 2>/dev/null || true
+}
+
+github_slug_from_remote() {
+  local remote="$1"
+  local slug=""
+
+  case "$remote" in
+    git@github.com:* ) slug="${remote#git@github.com:}" ;;
+    ssh://git@github.com/* ) slug="${remote#ssh://git@github.com/}" ;;
+    https://github.com/* ) slug="${remote#https://github.com/}" ;;
+    http://github.com/* ) slug="${remote#http://github.com/}" ;;
+  esac
+
+  slug="${slug%.git}"
+  if [[ "$slug" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    printf '%s\n' "$slug"
+  fi
+}
+
+json_field() {
+  local json="$1"
+  local filter="$2"
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$json" | jq -r "$filter" 2>/dev/null || true
+  fi
+}
+
+signal_json() {
+  local root="$1"
+  local -a signals=()
+  [ -f "$root/README.md" ] && signals+=("README.md")
+  [ -f "$root/AGENTS.md" ] && signals+=("AGENTS.md")
+  [ -f "$root/package.json" ] && signals+=("package.json")
+  [ -f "$root/Makefile" ] && signals+=("Makefile")
+  [ -d "$root/.github/workflows" ] && signals+=(".github/workflows")
+  [ -f "$root/LICENSE" ] && signals+=("LICENSE")
+
+  local first=1 signal
+  printf '['
+  for signal in "${signals[@]}"; do
+    [ "$first" -eq 1 ] || printf ','
+    first=0
+    json_string "$signal"
+  done
+  printf ']'
+}
+
+improvement_json() {
+  local root="$1"
+  local -a improvements=()
+  [ -f "$root/README.md" ] || improvements+=("Add README.md so people and integrations have a repository entry point.")
+  [ -f "$root/AGENTS.md" ] || improvements+=("Add AGENTS.md or another repo-owned operating guide.")
+  { [ -f "$root/package.json" ] || [ -f "$root/Makefile" ]; } || improvements+=("Declare at least one build, test, or verification entry point.")
+  [ -d "$root/.github/workflows" ] || improvements+=("Add .github/workflows when this repository needs GitHub Actions automation.")
+  [ -f "$root/LICENSE" ] || improvements+=("Add a license before distributing the repository.")
+
+  local first=1 improvement
+  printf '['
+  for improvement in "${improvements[@]}"; do
+    [ "$first" -eq 1 ] || printf ','
+    first=0
+    json_string "$improvement"
+  done
+  printf ']'
+}
+
+improvement_text() {
+  local root="$1"
+  local improvements
+  improvements="$(improvement_json "$root")"
+  if [ "$improvements" = '[]' ]; then
+    return 0
+  fi
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$improvements" | jq -r '.[]' 2>/dev/null || true
+  fi
+}
+
+contract_value() {
+  local file="$1"
+  local section="$2"
+  local key="$3"
+  awk -v section="$section" -v key="$key" '
+    $0 == section ":" { inside = 1; next }
+    inside && /^[^[:space:]#]/ { exit }
+    inside && $0 ~ "^  " key ":[[:space:]]*" {
+      sub("^  " key ":[[:space:]]*", "")
+      quote = sprintf("%c", 39)
+      if (substr($0, 1, 1) == quote) {
+        sub("^" quote, "")
+        sub(quote "$", "")
+      }
+      print
+      exit
+    }
+  ' "$file"
+}
+
+validate_contract() {
+  local file="$1"
+  local version name read_only
+  [ -f "$file" ] || { printf 'missing contract: %s\n' "$file" >&2; return 1; }
+
+  version="$(awk '
+    /^version:[[:space:]]*/ {
+      sub(/^version:[[:space:]]*/, "")
+      quote = sprintf("%c", 39)
+      if (substr($0, 1, 1) == quote) {
+        sub("^" quote, "")
+        sub(quote "$", "")
+      }
+      print
+      exit
+    }
+  ' "$file")"
+  name="$(contract_value "$file" repository name)"
+  read_only="$(contract_value "$file" discovery read_only)"
+
+  [ "$version" = "$CONTRACT_VERSION" ] || { printf 'invalid contract version: expected %s\n' "$CONTRACT_VERSION" >&2; return 1; }
+  [ -n "$name" ] || { printf 'invalid contract: repository.name is required\n' >&2; return 1; }
+  [ "$read_only" = "true" ] || { printf 'invalid contract: discovery.read_only must be true\n' >&2; return 1; }
+}
+
+root="$(repo_root ".")"
+format="text"
+mode="write"
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --json) format="json" ;;
+    --check) mode="check" ;;
+    -h|--help) usage; exit 0 ;;
+    -v|--version) printf '%s\n' "$RABBIT_CI_VERSION"; exit 0 ;;
+    --*) printf 'unknown option: %s\n' "$1" >&2; usage >&2; exit 1 ;;
+    *) root="$(repo_root "$1")" ;;
+  esac
+  shift
+done
+
+contract_path="$root/$CONTRACT_RELATIVE_PATH"
+repo_name="$(basename "$root")"
+remote="$(git_value "$root" config --get remote.origin.url)"
+github_slug="$(github_slug_from_remote "$remote")"
+owner=""
+if [ -n "$github_slug" ]; then
+  owner="${github_slug%%/*}"
+fi
+default_branch="$(git_value "$root" symbolic-ref --short refs/remotes/origin/HEAD)"
+default_branch="${default_branch#origin/}"
+[ -n "$default_branch" ] || default_branch="$(git_value "$root" branch --show-current)"
+[ -n "$default_branch" ] || default_branch="unknown"
+
+github_status="not_configured"
+github_reason="No GitHub origin is configured."
+github_default_branch=""
+github_permissions='{}'
+if [ -n "$github_slug" ]; then
+  if ! command -v gh >/dev/null 2>&1; then
+    github_status="unavailable"
+    github_reason="The gh CLI is unavailable."
+  else
+    github_response=""
+    if github_response="$(gh api -X GET "repos/$github_slug" 2>&1)"; then
+      github_status="available"
+      github_reason="Repository metadata is available through the current gh token."
+      github_default_branch="$(json_field "$github_response" '.default_branch // empty')"
+      github_permissions="$(printf '%s' "$github_response" | jq -c '.permissions // {}' 2>/dev/null || printf '{}')"
+      [ -n "$github_default_branch" ] && default_branch="$github_default_branch"
+    elif [[ "$github_response" == *"HTTP 401"* || "$github_response" == *"authentication required"* ]]; then
+      github_status="unauthenticated"
+      github_reason="The current gh token cannot authenticate this request."
+    elif [[ "$github_response" == *"HTTP 403"* ]]; then
+      github_status="forbidden"
+      github_reason="The current gh token cannot read this repository."
+    elif [[ "$github_response" == *"HTTP 404"* || "$github_response" == *"Not Found"* ]]; then
+      github_status="not_accessible"
+      github_reason="The repository is absent or not visible to the current gh token."
+    else
+      github_status="unavailable"
+      github_reason="GitHub metadata could not be resolved."
+    fi
+  fi
+fi
+
+if [ "$mode" = "check" ]; then
+  validate_contract "$contract_path"
+  written=false
+else
+  mkdir -p "$(dirname "$contract_path")"
+  tmp_contract="$(mktemp "${contract_path}.tmp.XXXXXX")"
+  trap 'rm -f "$tmp_contract"' EXIT
+  {
+    printf '# Generated by rabbit.ci. Review and commit this repository contract.\n'
+    printf 'version: %s\n' "$CONTRACT_VERSION"
+    printf 'repository:\n'
+    printf '  name: '; yaml_string "$repo_name"; printf '\n'
+    if [ -n "$owner" ]; then
+      printf '  owner: '; yaml_string "$owner"; printf '\n'
+    fi
+    printf '  default_branch: '; yaml_string "$default_branch"; printf '\n'
+    printf 'discovery:\n'
+    printf '  read_only: true\n'
+  } > "$tmp_contract"
+  mv "$tmp_contract" "$contract_path"
+  trap - EXIT
+  written=true
+fi
+
+signals="$(signal_json "$root")"
+improvements="$(improvement_json "$root")"
+if [ "$format" = "json" ]; then
+  printf '{"contract":{"path":'
+  json_string "$CONTRACT_RELATIVE_PATH"
+  printf ',"mode":'
+  json_string "$mode"
+  printf ',"written":%s},"repository":{"name":' "$written"
+  json_string "$repo_name"
+  printf ',"owner":'
+  if [ -n "$owner" ]; then json_string "$owner"; else printf 'null'; fi
+  printf ',"default_branch":'
+  json_string "$default_branch"
+  printf ',"remote":'
+  if [ -n "$remote" ]; then json_string "$remote"; else printf 'null'; fi
+  printf '},"github":{"status":'
+  json_string "$github_status"
+  printf ',"reason":'
+  json_string "$github_reason"
+  printf ',"permissions":%s},"context":{"signals":%s,"improvements":%s}}\n' "$github_permissions" "$signals" "$improvements"
+  exit 0
+fi
+
+printf 'rabbit.ci\n'
+printf '  contract: %s (%s)\n' "$CONTRACT_RELATIVE_PATH" "$mode"
+printf '  repository: %s' "$repo_name"
+[ -n "$owner" ] && printf ' (%s)' "$owner"
+printf '\n'
+printf '  default branch: %s\n' "$default_branch"
+printf '  GitHub: %s — %s\n' "$github_status" "$github_reason"
+if [ "$improvements" != '[]' ]; then
+  printf '  improvements:\n'
+  improvement_text "$root" | while IFS= read -r improvement; do
+    [ -n "$improvement" ] && printf '    - %s\n' "$improvement"
+  done
+fi

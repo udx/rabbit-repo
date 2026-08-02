@@ -1,0 +1,5 @@
+version: rabbit.ci/repo/v1
+repository:
+  name: 'invalid-repo'
+discovery:
+  read_only: false

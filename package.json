@@ -1,0 +1,26 @@
+{
+  "name": "@udx/rabbit-repo",
+  "version": "0.1.0",
+  "description": "Repository contract tooling for Rabbit CI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/udx/rabbit-repo.git"
+  },
+  "bin": {
+    "rabbit.ci": "bin/rabbit.ci"
+  },
+  "files": [
+    "bin/",
+    "docs/"
+  ],
+  "keywords": [
+    "rabbit-ci",
+    "repository-contract",
+    "sdlc",
+    "developer-tools"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

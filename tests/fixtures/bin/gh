@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ "${1:-}" = "api" ] || exit 1
+printf '%s\n' '{"default_branch":"main","permissions":{"admin":false,"maintain":false,"push":true,"triage":true,"pull":true}}'
