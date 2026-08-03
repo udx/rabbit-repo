@@ -25,10 +25,16 @@ Rabbit CI execution remains in its integrations and backends.
 
 ## Quick start
 
-Generate, inspect in JSON, or validate the current contract:
+Install the CLI globally:
 
 ```bash
-bin/rabbit.ci
+npm install --global @udx/rabbit-repo
+```
+
+Then generate, inspect in JSON, or validate the current contract:
+
+```bash
+rabbit.ci /path/to/repository
 bin/rabbit.ci --json
 bin/rabbit.ci --check
 ```
