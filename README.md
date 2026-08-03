@@ -35,8 +35,8 @@ Then generate, inspect in JSON, or validate the current contract:
 
 ```bash
 rabbit.ci /path/to/repository
-bin/rabbit.ci --json
-bin/rabbit.ci --check
+rabbit.ci /path/to/repository --json
+rabbit.ci /path/to/repository --check
 ```
 
 `--json` is the dynamic integration interface. It contains no token or secret
