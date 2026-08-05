@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly RABBIT_CI_VERSION="0.1.1"
+readonly RABBIT_CI_VERSION="0.1.2"
 readonly CONTRACT_VERSION="rabbit.ci/repo/v1"
 readonly CONTRACT_RELATIVE_PATH=".rabbit/repo.yaml"
 
