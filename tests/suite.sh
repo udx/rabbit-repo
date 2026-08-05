@@ -13,7 +13,9 @@ fail() {
   exit 1
 }
 
-[ "$($CLI --version)" = "0.1.1" ] || fail "CLI version did not match package version"
+expected_version="$(node -p "require('$ROOT_DIR/package.json').version")"
+actual_version="$($CLI --version)"
+[ "$actual_version" = "$expected_version" ] || fail "CLI version $actual_version did not match package version $expected_version"
 
 cp -R "$FIXTURE/." "$TMP_DIR/repo"
 mkdir -p "$TMP_DIR/repo/.rabbit"
