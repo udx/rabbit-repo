@@ -1,6 +1,6 @@
 # rabbit-repo
 
-`rabbit.ci` is the repository integration layer for Rabbit CI.
+`rabbit.ci` resolves the GitHub delivery shape of a repository for Rabbit CI.
 
 Run one command in a repository:
 
@@ -8,18 +8,13 @@ Run one command in a repository:
 rabbit.ci
 ```
 
-It writes `.rabbit/repo.yaml` and reports the read-only integration context:
-repository identity, current default branch, GitHub visibility and permissions
-available to the current `gh` token, repo-owned signals, and the next missing
-pieces worth improving.
+It writes `.rabbit/repo.yaml` with repository identity, branch rules,
+environments, and workflow triggers.
 
-The generated file is intentionally small and committed with the code. Dynamic
-state stays in command output, so it remains current without leaking secrets or
-turning GitHub state into permanent repository truth.
+The generated file is committed with the code. Refresh it when GitHub delivery
+configuration changes.
 
-`.rabbit/context.yaml` is legacy. `rabbit.ci` never reads it as contract input;
-it reports its presence so the repository can complete the migration through a
-normal review.
+`.rabbit/context.yaml` is legacy and is not read by `rabbit.ci`.
 
 ## Status
 
@@ -35,7 +30,7 @@ Install the CLI globally:
 npm install --global @udx/rabbit-repo
 ```
 
-Then generate, inspect in JSON, or validate the current contract:
+Then generate, inspect in JSON, or validate the current resolution:
 
 ```bash
 rabbit.ci /path/to/repository
@@ -43,22 +38,19 @@ rabbit.ci /path/to/repository --json
 rabbit.ci /path/to/repository --check
 ```
 
-`--json` is the dynamic integration interface. It contains no token or secret
-values. A GitHub repository is queried only when an `origin` points to GitHub;
-the output distinguishes unavailable tooling, an unauthenticated token,
-insufficient access, and a repository that is not visible to the token.
+`--json` returns the same resolution as `.rabbit/repo.yaml`. GitHub discovery
+is read-only. Secret and variable values are never written; only their names
+are included.
 
-## Contract
+## Resolution
 
-The v1 contract is intentionally small:
+The resolution contains executable repository facts:
 
-- `repository.name` identifies the codebase.
-- `repository.owner` is included when a GitHub origin supplies one.
-- `repository.default_branch` is the best locally or remotely observed default.
-- `discovery.read_only: true` guarantees discovery never reads secret values or
-  mutates GitHub, workflow, environment, or cloud state.
+- branch names and effective GitHub rules;
+- environments, deployment branch policies, approvals, and secret/variable names;
+- workflow paths, triggers, and workflow-level permissions.
 
-Read the [repository contract](docs/repo-contract.md),
+Read the [repository resolution](docs/repo-resolution.md),
 [repository discovery and initialization](docs/repository-discovery.md), and
 [dev.kit migration boundary](docs/dev-kit-migration.md) before extending it.
 

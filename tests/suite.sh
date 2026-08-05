@@ -25,29 +25,31 @@ git -C "$TMP_DIR/repo" checkout -q -b main
 git -C "$TMP_DIR/repo" remote add origin git@github.com:example/basic.git
 
 PATH="$MOCK_BIN:$PATH" "$CLI" "$TMP_DIR/repo" >/dev/null
-CONTRACT="$TMP_DIR/repo/.rabbit/repo.yaml"
-[ -f "$CONTRACT" ] || fail "command did not generate .rabbit/repo.yaml"
-grep -Fqx "version: rabbit.ci/repo/v1" "$CONTRACT" || fail "contract version changed"
-grep -Fqx "  name: 'repo'" "$CONTRACT" || fail "contract did not use repository directory name"
-grep -Fqx "  owner: 'example'" "$CONTRACT" || fail "contract did not resolve GitHub owner"
+RESOLUTION="$TMP_DIR/repo/.rabbit/repo.yaml"
+[ -f "$RESOLUTION" ] || fail "command did not generate .rabbit/repo.yaml"
+grep -Fqx "kind: repoResolution" "$RESOLUTION" || fail "resolution kind changed"
+grep -Fqx "version: rabbit.ci/repo-resolution/v1" "$RESOLUTION" || fail "resolution version changed"
+grep -Fqx "  name: repo" "$RESOLUTION" || fail "resolution did not use repository directory name"
+grep -Fqx "  owner: example" "$RESOLUTION" || fail "resolution did not resolve GitHub owner"
+grep -Fqx -- "- name: main" "$RESOLUTION" || fail "resolution did not include branch rules"
+grep -Fqx -- "- name: production" "$RESOLUTION" || fail "resolution did not include environments"
+grep -Fqx "  - DEPLOY_TOKEN" "$RESOLUTION" || fail "resolution did not include environment secret names"
+grep -Fqx -- '- path: ".github/workflows/ci.yml"' "$RESOLUTION" || fail "resolution did not include workflows"
 
 PATH="$MOCK_BIN:$PATH" "$CLI" --check "$TMP_DIR/repo" >/dev/null
 if "$CLI" --check "$ROOT_DIR/tests/fixtures/invalid" >/dev/null 2>&1; then
-  fail "invalid contract passed validation"
+  fail "invalid resolution passed validation"
 fi
 json="$(PATH="$MOCK_BIN:$PATH" "$CLI" --json "$TMP_DIR/repo")"
-printf '%s\n' "$json" | grep -Fq '"written":true' || fail "JSON report did not record contract write"
-printf '%s\n' "$json" | grep -Fq '"status":"available"' || fail "GitHub capability was not reported"
-printf '%s\n' "$json" | grep -Fq '"push":true' || fail "GitHub token permission was not reported"
-printf '%s\n' "$json" | grep -Fq '"README.md"' || fail "repo context signals were not reported"
-printf '%s\n' "$json" | grep -Fq '"legacy_context":true' || fail "legacy context was not reported"
-printf '%s\n' "$json" | grep -Fq 'Retire legacy .rabbit/context.yaml' || fail "legacy context migration was not suggested"
+printf '%s' "$json" | jq -e '.kind == "repoResolution"' >/dev/null || fail "JSON did not identify the resolution kind"
+printf '%s' "$json" | jq -e '.branches[0].rules.pull_request.approvals == 1' >/dev/null || fail "JSON did not resolve branch rules"
+printf '%s' "$json" | jq -e '.environments[0].secrets == ["DEPLOY_TOKEN"]' >/dev/null || fail "JSON exposed the wrong environment secrets"
+printf '%s' "$json" | jq -e '.workflows[0].triggers.push.branches == ["main"]' >/dev/null || fail "JSON did not resolve workflow triggers"
 
 no_origin="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR" "$no_origin"' EXIT
 cp -R "$FIXTURE/." "$no_origin/repo"
 json="$($CLI --json "$no_origin/repo")"
-printf '%s\n' "$json" | grep -Fq '"status":"not_configured"' || fail "missing GitHub origin was not explicit"
-printf '%s\n' "$json" | grep -Fq '"legacy_context":false' || fail "missing legacy context was not explicit"
+printf '%s' "$json" | jq -e '.branches == [] and .environments == []' >/dev/null || fail "offline resolution did not keep GitHub lists empty"
 
 printf 'ok - rabbit.ci generation and integration checks\n'

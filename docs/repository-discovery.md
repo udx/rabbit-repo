@@ -13,27 +13,18 @@ GitHub settings, run workflows, or read secret values.
 
 ## What the output means
 
-The generated contract contains portable facts that belong with the repository.
-The command output carries changing context such as available files, suggested
-improvements, GitHub visibility, and the token's reported repository
-permissions. Keeping these separate makes the committed contract reviewable and
-keeps live state current without storing credentials or stale collaboration data.
+The generated resolution contains portable facts that belong with the
+repository: branch rules, environments, and workflow triggers. It never stores
+credentials, secret values, variable values, or workflow-run state.
 
-If `.rabbit/context.yaml` is present, the output marks it as legacy. The command
-does not inspect, rewrite, or delete that file; completing the migration remains
-a repository-owned reviewed change.
+If `.rabbit/context.yaml` is present, the command does not inspect, rewrite, or
+delete it; completing the migration remains a repository-owned reviewed change.
 
-The output reports only what it observes. For GitHub, that means:
+The resolution reports only what it observes. For GitHub, that means:
 
-- no origin: GitHub is `not_configured`;
-- no usable `gh` client or authentication: GitHub is unavailable or
-  unauthenticated;
-- a token without repository visibility: GitHub is `not_accessible` or
-  `forbidden`;
-- a visible repository: the report includes its returned permissions.
-
-These are repository signals, not failures. They tell a person or integration
-what is available now and what needs an explicit next decision.
+- no origin, no usable `gh` client, or no repository visibility leaves GitHub
+  lists empty;
+- a visible repository supplies its branches, rules, and environments.
 
 ## New or local repositories
 
@@ -48,11 +39,9 @@ improve the missing parts when they are ready.
 
 ## Downstream use
 
-Rabbit CI integrations, Worker, GitHub automation, AI assistants, and future
-compliance tooling can consume the same contract and dynamic report. The
-contract describes the repository; the dynamic report says what can be
-integrated at the time it runs.
+Rabbit CI integrations, Worker, GitHub automation, and AI assistants can
+consume the same resolution.
 
-For field definitions, read the [repository contract](repo-contract.md). For
+For field definitions, read the [repository resolution](repo-resolution.md). For
 the boundary with broad repo-context generation, read the
 [dev.kit migration note](dev-kit-migration.md).

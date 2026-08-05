@@ -2,4 +2,26 @@
 set -euo pipefail
 
 [ "${1:-}" = "api" ] || exit 1
-printf '%s\n' '{"default_branch":"main","permissions":{"admin":false,"maintain":false,"push":true,"triage":true,"pull":true}}'
+case "${*: -1}" in
+  */branches\?per_page=100)
+    printf '%s\n' '[{"name":"main","protected":true}]'
+    ;;
+  */rules/branches/main)
+    printf '%s\n' '[{"type":"deletion"},{"type":"pull_request","parameters":{"required_approving_review_count":1,"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_last_push_approval":false,"required_review_thread_resolution":true,"allowed_merge_methods":["squash"]}}]'
+    ;;
+  */environments\?per_page=100)
+    printf '%s\n' '{"environments":[{"name":"production"}]}'
+    ;;
+  */environments/production/secrets)
+    printf '%s\n' '{"secrets":[{"name":"DEPLOY_TOKEN"}]}'
+    ;;
+  */environments/production/variables)
+    printf '%s\n' '{"variables":[{"name":"DEPLOY_REGION"}]}'
+    ;;
+  */environments/production)
+    printf '%s\n' '{"can_admins_bypass":false,"protection_rules":[{"type":"wait_timer","wait_timer":10}],"deployment_branch_policy":null}'
+    ;;
+  *)
+    printf '%s\n' '{"default_branch":"main","permissions":{"admin":false,"maintain":false,"push":true,"triage":true,"pull":true}}'
+    ;;
+esac
