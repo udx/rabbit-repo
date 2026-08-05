@@ -14,6 +14,8 @@ fail() {
 }
 
 cp -R "$FIXTURE/." "$TMP_DIR/repo"
+mkdir -p "$TMP_DIR/repo/.rabbit"
+printf 'version: legacy\n' > "$TMP_DIR/repo/.rabbit/context.yaml"
 git -C "$TMP_DIR/repo" init -q
 git -C "$TMP_DIR/repo" checkout -q -b main
 git -C "$TMP_DIR/repo" remote add origin git@github.com:example/basic.git
@@ -34,11 +36,14 @@ printf '%s\n' "$json" | grep -Fq '"written":true' || fail "JSON report did not r
 printf '%s\n' "$json" | grep -Fq '"status":"available"' || fail "GitHub capability was not reported"
 printf '%s\n' "$json" | grep -Fq '"push":true' || fail "GitHub token permission was not reported"
 printf '%s\n' "$json" | grep -Fq '"README.md"' || fail "repo context signals were not reported"
+printf '%s\n' "$json" | grep -Fq '"legacy_context":true' || fail "legacy context was not reported"
+printf '%s\n' "$json" | grep -Fq 'Retire legacy .rabbit/context.yaml' || fail "legacy context migration was not suggested"
 
 no_origin="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR" "$no_origin"' EXIT
 cp -R "$FIXTURE/." "$no_origin/repo"
 json="$($CLI --json "$no_origin/repo")"
 printf '%s\n' "$json" | grep -Fq '"status":"not_configured"' || fail "missing GitHub origin was not explicit"
+printf '%s\n' "$json" | grep -Fq '"legacy_context":false' || fail "missing legacy context was not explicit"
 
 printf 'ok - rabbit.ci generation and integration checks\n'

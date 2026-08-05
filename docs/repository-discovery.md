@@ -19,6 +19,10 @@ improvements, GitHub visibility, and the token's reported repository
 permissions. Keeping these separate makes the committed contract reviewable and
 keeps live state current without storing credentials or stale collaboration data.
 
+If `.rabbit/context.yaml` is present, the output marks it as legacy. The command
+does not inspect, rewrite, or delete that file; completing the migration remains
+a repository-owned reviewed change.
+
 The output reports only what it observes. For GitHub, that means:
 
 - no origin: GitHub is `not_configured`;
