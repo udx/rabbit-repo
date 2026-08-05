@@ -13,6 +13,8 @@ fail() {
   exit 1
 }
 
+[ "$($CLI --version)" = "0.1.1" ] || fail "CLI version did not match package version"
+
 cp -R "$FIXTURE/." "$TMP_DIR/repo"
 mkdir -p "$TMP_DIR/repo/.rabbit"
 printf 'version: legacy\n' > "$TMP_DIR/repo/.rabbit/context.yaml"
