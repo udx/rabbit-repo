@@ -17,6 +17,10 @@ The generated file is intentionally small and committed with the code. Dynamic
 state stays in command output, so it remains current without leaking secrets or
 turning GitHub state into permanent repository truth.
 
+`.rabbit/context.yaml` is legacy. `rabbit.ci` never reads it as contract input;
+it reports its presence so the repository can complete the migration through a
+normal review.
+
 ## Status
 
 This is the focused successor to the repository integration work that first

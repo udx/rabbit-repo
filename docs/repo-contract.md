@@ -17,6 +17,11 @@ The file contains only portable repository facts. It intentionally excludes
 tokens, secrets, open pull requests, workflow runs, and mutable environment
 state.
 
+`.rabbit/context.yaml` is a legacy artifact, not a second contract. `rabbit.ci`
+does not read it when generating or checking `.rabbit/repo.yaml`. Its dynamic
+report sets `context.legacy_context` when the file remains, and recommends the
+repository retire it after the committed contract has been reviewed.
+
 `rabbit.ci --json` is the companion dynamic interface. When an `origin` points
 to GitHub, it uses the current `gh` token for one read-only repository lookup.
 Its status makes the boundary explicit:
