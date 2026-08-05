@@ -1,6 +1,6 @@
 {
   "name": "@udx/rabbit-repo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Repository contract tooling for Rabbit CI",
   "license": "MIT",
   "repository": {
