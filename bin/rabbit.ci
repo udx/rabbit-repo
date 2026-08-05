@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly RABBIT_CI_VERSION="0.1.0"
+readonly RABBIT_CI_VERSION="0.1.1"
 readonly CONTRACT_VERSION="rabbit.ci/repo/v1"
 readonly CONTRACT_RELATIVE_PATH=".rabbit/repo.yaml"
 
@@ -104,9 +104,19 @@ signal_json() {
   printf ']'
 }
 
+legacy_context_json() {
+  local root="$1"
+  if [ -f "$root/.rabbit/context.yaml" ]; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
+
 improvement_json() {
   local root="$1"
   local -a improvements=()
+  [ -f "$root/.rabbit/context.yaml" ] && improvements+=("Retire legacy .rabbit/context.yaml after reviewing and committing .rabbit/repo.yaml.")
   [ -f "$root/README.md" ] || improvements+=("Add README.md so people and integrations have a repository entry point.")
   [ -f "$root/AGENTS.md" ] || improvements+=("Add AGENTS.md or another repo-owned operating guide.")
   { [ -f "$root/package.json" ] || [ -f "$root/Makefile" ]; } || improvements+=("Declare at least one build, test, or verification entry point.")
@@ -266,6 +276,7 @@ else
 fi
 
 signals="$(signal_json "$root")"
+legacy_context="$(legacy_context_json "$root")"
 improvements="$(improvement_json "$root")"
 if [ "$format" = "json" ]; then
   printf '{"contract":{"path":'
@@ -284,7 +295,7 @@ if [ "$format" = "json" ]; then
   json_string "$github_status"
   printf ',"reason":'
   json_string "$github_reason"
-  printf ',"permissions":%s},"context":{"signals":%s,"improvements":%s}}\n' "$github_permissions" "$signals" "$improvements"
+  printf ',"permissions":%s},"context":{"signals":%s,"legacy_context":%s,"improvements":%s}}\n' "$github_permissions" "$signals" "$legacy_context" "$improvements"
   exit 0
 fi
 

@@ -1,14 +1,17 @@
 {
   "name": "@udx/rabbit-repo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Repository contract tooling for Rabbit CI",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/udx/rabbit-repo.git"
+    "url": "git+https://github.com/udx/rabbit-repo.git"
   },
   "bin": {
     "rabbit.ci": "bin/rabbit.ci"
+  },
+  "scripts": {
+    "test": "make test"
   },
   "files": [
     "bin/",

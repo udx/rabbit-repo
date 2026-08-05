@@ -2,6 +2,7 @@
 version: rabbit.ci/repo/v1
 repository:
   name: 'rabbit-repo'
+  owner: 'udx'
   default_branch: 'main'
 discovery:
   read_only: true

@@ -17,6 +17,10 @@ The generated file is intentionally small and committed with the code. Dynamic
 state stays in command output, so it remains current without leaking secrets or
 turning GitHub state into permanent repository truth.
 
+`.rabbit/context.yaml` is legacy. `rabbit.ci` never reads it as contract input;
+it reports its presence so the repository can complete the migration through a
+normal review.
+
 ## Status
 
 This is the focused successor to the repository integration work that first
@@ -25,12 +29,18 @@ Rabbit CI execution remains in its integrations and backends.
 
 ## Quick start
 
-Generate, inspect in JSON, or validate the current contract:
+Install the CLI globally:
 
 ```bash
-bin/rabbit.ci
-bin/rabbit.ci --json
-bin/rabbit.ci --check
+npm install --global @udx/rabbit-repo
+```
+
+Then generate, inspect in JSON, or validate the current contract:
+
+```bash
+rabbit.ci /path/to/repository
+rabbit.ci /path/to/repository --json
+rabbit.ci /path/to/repository --check
 ```
 
 `--json` is the dynamic integration interface. It contains no token or secret
