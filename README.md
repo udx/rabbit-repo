@@ -30,17 +30,18 @@ Install the CLI globally:
 npm install --global @udx/rabbit-repo
 ```
 
-Then generate, inspect in JSON, or validate the current resolution:
+Run the command from the repository you want to resolve:
 
 ```bash
-rabbit.ci /path/to/repository
-rabbit.ci /path/to/repository --json
-rabbit.ci /path/to/repository --check
+rabbit.ci
+rabbit.ci --json
+rabbit.ci --yaml
 ```
 
-`--json` returns the same resolution as `.rabbit/repo.yaml`. GitHub discovery
-is read-only. Secret and variable values are never written; only their names
-are included.
+The default command writes `.rabbit/repo.yaml` and prints a short summary.
+`--json` and `--yaml` print the same resolution without writing a file. GitHub
+discovery is read-only and unavailable GitHub data is left empty. Secret and
+variable values are never written; only their names are included.
 
 ## Resolution
 

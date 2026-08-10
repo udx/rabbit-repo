@@ -13,6 +13,9 @@
   "scripts": {
     "test": "make test"
   },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
   "files": [
     "bin/",
     "docs/"

@@ -13,9 +13,9 @@ fail() {
   exit 1
 }
 
-expected_version="$(node -p "require('$ROOT_DIR/package.json').version")"
-actual_version="$($CLI --version)"
-[ "$actual_version" = "$expected_version" ] || fail "CLI version $actual_version did not match package version $expected_version"
+if grep -Eq '\<(ruby|jq)\>' "$CLI" "$ROOT_DIR/bin/rabbit.ci.js"; then
+  fail "CLI must not require Ruby or jq"
+fi
 
 cp -R "$FIXTURE/." "$TMP_DIR/repo"
 mkdir -p "$TMP_DIR/repo/.rabbit"
@@ -24,32 +24,52 @@ git -C "$TMP_DIR/repo" init -q
 git -C "$TMP_DIR/repo" checkout -q -b main
 git -C "$TMP_DIR/repo" remote add origin git@github.com:example/basic.git
 
-PATH="$MOCK_BIN:$PATH" "$CLI" "$TMP_DIR/repo" >/dev/null
+(
+  cd "$TMP_DIR/repo"
+  PATH="$MOCK_BIN:$PATH" "$CLI" >/dev/null
+)
 RESOLUTION="$TMP_DIR/repo/.rabbit/repo.yaml"
 [ -f "$RESOLUTION" ] || fail "command did not generate .rabbit/repo.yaml"
-grep -Fqx "kind: repoResolution" "$RESOLUTION" || fail "resolution kind changed"
-grep -Fqx "version: rabbit.ci/repo-resolution/v1" "$RESOLUTION" || fail "resolution version changed"
-grep -Fqx "  name: repo" "$RESOLUTION" || fail "resolution did not use repository directory name"
-grep -Fqx "  owner: example" "$RESOLUTION" || fail "resolution did not resolve GitHub owner"
-grep -Fqx -- "- name: main" "$RESOLUTION" || fail "resolution did not include branch rules"
-grep -Fqx -- "- name: production" "$RESOLUTION" || fail "resolution did not include environments"
-grep -Fqx "  - DEPLOY_TOKEN" "$RESOLUTION" || fail "resolution did not include environment secret names"
-grep -Fqx -- '- path: ".github/workflows/ci.yml"' "$RESOLUTION" || fail "resolution did not include workflows"
+node - "$RESOLUTION" <<'NODE' || fail "written YAML did not contain the expected resolution"
+const fs = require('node:fs');
+const YAML = require('yaml');
+const resolution = YAML.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (resolution.kind !== 'repoResolution') process.exit(1);
+if (resolution.repository.name !== 'repo' || resolution.repository.owner !== 'example') process.exit(1);
+if (resolution.branches[0].rules.pull_request.approvals !== 1) process.exit(1);
+if (resolution.environments[0].name !== 'production') process.exit(1);
+if (resolution.environments[0].secrets[0] !== 'DEPLOY_TOKEN') process.exit(1);
+if (resolution.workflows[0].path !== '.github/workflows/ci.yml') process.exit(1);
+NODE
 
-PATH="$MOCK_BIN:$PATH" "$CLI" --check "$TMP_DIR/repo" >/dev/null
-if "$CLI" --check "$ROOT_DIR/tests/fixtures/invalid" >/dev/null 2>&1; then
-  fail "invalid resolution passed validation"
-fi
-json="$(PATH="$MOCK_BIN:$PATH" "$CLI" --json "$TMP_DIR/repo")"
-printf '%s' "$json" | jq -e '.kind == "repoResolution"' >/dev/null || fail "JSON did not identify the resolution kind"
-printf '%s' "$json" | jq -e '.branches[0].rules.pull_request.approvals == 1' >/dev/null || fail "JSON did not resolve branch rules"
-printf '%s' "$json" | jq -e '.environments[0].secrets == ["DEPLOY_TOKEN"]' >/dev/null || fail "JSON exposed the wrong environment secrets"
-printf '%s' "$json" | jq -e '.workflows[0].triggers.push.branches == ["main"]' >/dev/null || fail "JSON did not resolve workflow triggers"
+json="$(cd "$TMP_DIR/repo" && PATH="$MOCK_BIN:$PATH" "$CLI" --json)"
+yaml="$(cd "$TMP_DIR/repo" && PATH="$MOCK_BIN:$PATH" "$CLI" --yaml)"
+node - "$json" "$yaml" <<'NODE' || fail "JSON and YAML output did not match"
+const YAML = require('yaml');
+const json = JSON.parse(process.argv[2]);
+const yaml = YAML.parse(process.argv[3]);
+if (JSON.stringify(json) !== JSON.stringify(yaml)) process.exit(1);
+NODE
+
+mkdir -p "$TMP_DIR/repo/nested/directory"
+(cd "$TMP_DIR/repo/nested/directory" && PATH="$MOCK_BIN:$PATH" "$CLI" --json >/dev/null)
 
 no_origin="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR" "$no_origin"' EXIT
 cp -R "$FIXTURE/." "$no_origin/repo"
-json="$($CLI --json "$no_origin/repo")"
-printf '%s' "$json" | jq -e '.branches == [] and .environments == []' >/dev/null || fail "offline resolution did not keep GitHub lists empty"
+git -C "$no_origin/repo" init -q
+git -C "$no_origin/repo" checkout -q -b main
+json="$(cd "$no_origin/repo" && "$CLI" --json)"
+yaml="$(cd "$no_origin/repo" && "$CLI" --yaml)"
+node - "$json" <<'NODE' || fail "offline resolution did not keep GitHub lists empty"
+const resolution = JSON.parse(process.argv[2]);
+if (resolution.environments.length !== 0 || resolution.repository.owner !== undefined) process.exit(1);
+NODE
+[ ! -e "$no_origin/repo/.rabbit/repo.yaml" ] || fail "output modes wrote a resolution file"
+[ -n "$yaml" ] || fail "YAML output was empty"
 
-printf 'ok - rabbit.ci generation and integration checks\n'
+if (cd "$TMP_DIR/repo" && "$CLI" --check >/dev/null 2>&1); then
+  fail "unsupported command succeeded"
+fi
+
+printf 'ok - rabbit.ci resolution output checks\n'

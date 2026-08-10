@@ -22,8 +22,9 @@ and workflow runs.
 `.rabbit/context.yaml` is legacy. `rabbit.ci` does not read, rewrite, or delete
 it.
 
-`rabbit.ci --json` emits the same data as JSON. When an `origin` points to
-GitHub, it uses the current `gh` token for read-only discovery.
+`rabbit.ci --json` and `rabbit.ci --yaml` emit the same data without writing a
+file. When an `origin` points to GitHub, the command uses the current `gh`
+token for read-only discovery.
 
 For how the resolution behaves before a repository has an
 initial commit, remote, or GitHub connection, read

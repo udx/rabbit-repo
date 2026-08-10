@@ -5,51 +5,53 @@ repository:
   owner: udx
   default_branch: main
 branches:
-- name: main
-  rules:
-    allow_deletions: false
-    allow_force_pushes: false
-    pull_request:
-      approvals: 1
-      code_owner_review: true
-      stale_reviews: true
-      last_push_approval: false
-      conversation_resolution: true
-      merge_methods:
-      - merge
-      - squash
-      - rebase
-    copilot_review:
-      on_push: true
-      drafts: false
+  - name: main
+    rules:
+      allow_deletions: false
+      allow_force_pushes: false
+      pull_request:
+        approvals: 1
+        code_owner_review: true
+        stale_reviews: true
+        last_push_approval: false
+        conversation_resolution: true
+        merge_methods:
+          - merge
+          - squash
+          - rebase
+      copilot_review:
+        on_push: true
+        drafts: false
+  - name: release/v0.1.3
+    rules: {}
 environments:
-- name: copilot
-  branches:
-  - "*"
-  approvals: []
-  wait_minutes: 0
-  admin_bypass: true
-  secrets: []
-  variables: []
-- name: main
-  branches:
-  - "*"
-  approvals: []
-  wait_minutes: 0
-  admin_bypass: true
-  secrets: []
-  variables: []
+  - name: copilot
+    branches:
+      - "*"
+    approvals: []
+    wait_minutes: 0
+    admin_bypass: true
+    secrets: []
+    variables: []
+  - name: main
+    branches:
+      - "*"
+    approvals: []
+    wait_minutes: 0
+    admin_bypass: true
+    secrets: []
+    variables: []
 workflows:
-- path: ".github/workflows/ci.yml"
-  triggers:
-    pull_request: {}
-    push:
-      branches:
-      - main
-  permissions:
-    contents: read
-- path: ".github/workflows/publish.yml"
-  triggers:
-    push:
-      branches:
-      - main
+  - path: .github/workflows/ci.yml
+    triggers:
+      pull_request: {}
+      push:
+        branches:
+          - main
+    permissions:
+      contents: read
+  - path: .github/workflows/publish.yml
+    triggers:
+      push:
+        branches:
+          - main
