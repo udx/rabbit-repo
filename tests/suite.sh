@@ -59,6 +59,10 @@ NODE
 mkdir -p "$TMP_DIR/repo/nested/directory"
 (cd "$TMP_DIR/repo/nested/directory" && PATH="$MOCK_BIN:$PATH" "$CLI" --json >/dev/null)
 
+mkdir -p "$TMP_DIR/global-bin"
+ln -s "$CLI" "$TMP_DIR/global-bin/rabbit.ci"
+(cd "$TMP_DIR/repo" && PATH="$MOCK_BIN:$PATH" "$TMP_DIR/global-bin/rabbit.ci" --json >/dev/null)
+
 no_environments="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR" "$no_environments"' EXIT
 cp -R "$FIXTURE/." "$no_environments/repo"
