@@ -38,7 +38,8 @@ if (resolution.kind !== 'repo' || resolution.version !== 'udx.dev/rabbit.ci/repo
 if (resolution.repository.name !== 'repo' || resolution.repository.owner !== 'example') process.exit(1);
 if (resolution.branches[0].rules.pull_request.approvals !== 1) process.exit(1);
 if (resolution.environments[0].name !== 'production') process.exit(1);
-if (resolution.environments[0].secrets[0] !== 'DEPLOY_TOKEN') process.exit(1);
+if (resolution.environments[0].secrets.join(',') !== 'ORG_SECRET,REPO_SECRET,DEPLOY_TOKEN') process.exit(1);
+if (resolution.environments[0].variables.join(',') !== 'ORG_REGION,REPO_REGION,DEPLOY_REGION') process.exit(1);
 if (resolution.workflows[0].path !== '.github/workflows/ci.yml') process.exit(1);
 NODE
 
@@ -63,7 +64,8 @@ json="$(cd "$no_origin/repo" && "$CLI" --json)"
 yaml="$(cd "$no_origin/repo" && "$CLI" --yaml)"
 node - "$json" <<'NODE' || fail "offline resolution did not keep GitHub lists empty"
 const resolution = JSON.parse(process.argv[2]);
-if (resolution.environments.length !== 0 || resolution.repository.owner !== undefined) process.exit(1);
+if (resolution.environments.length !== 1 || resolution.environments[0].name !== 'default') process.exit(1);
+if (resolution.repository.owner !== undefined) process.exit(1);
 NODE
 [ ! -e "$no_origin/repo/.rabbit/repo.yaml" ] || fail "output modes wrote a resolution file"
 [ -n "$yaml" ] || fail "YAML output was empty"

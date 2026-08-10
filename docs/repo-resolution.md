@@ -16,8 +16,12 @@ workflows: []
 ```
 
 The file contains branch rules, GitHub Environment configuration, and workflow
-triggers. It excludes tokens, secret values, variable values, pull requests,
-and workflow runs.
+triggers. Environment secret and variable names include organization and
+repository names available to the repository; environment names take precedence
+over repository names, which take precedence over organization names. If GitHub
+has no configured environments, `default` is a generated, ungated environment
+with the inherited names. The file excludes tokens, secret values, variable
+values, pull requests, and workflow runs.
 
 `.rabbit/context.yaml` is legacy. `rabbit.ci` does not read, rewrite, or delete
 it.

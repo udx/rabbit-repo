@@ -31,16 +31,34 @@ environments:
     approvals: []
     wait_minutes: 0
     admin_bypass: true
-    secrets: []
-    variables: []
+    secrets:
+      - BITBUCKET_TOKEN
+      - CONTEXT7_API_KEY
+      - DEPENDABOT_REVIEWER_TOKEN
+    variables:
+      - DOCKER_LOGIN
+      - DOCKER_ORG
+      - GCP_PROJECT_ID
+      - GCP_REGION
+      - GCP_WORKLOAD_IDENTITY_PROVIDER
+      - GH_SERVICE_ACCOUNT_EMAIL
   - name: main
     branches:
       - "*"
     approvals: []
     wait_minutes: 0
     admin_bypass: true
-    secrets: []
-    variables: []
+    secrets:
+      - BITBUCKET_TOKEN
+      - CONTEXT7_API_KEY
+      - DEPENDABOT_REVIEWER_TOKEN
+    variables:
+      - DOCKER_LOGIN
+      - DOCKER_ORG
+      - GCP_PROJECT_ID
+      - GCP_REGION
+      - GCP_WORKLOAD_IDENTITY_PROVIDER
+      - GH_SERVICE_ACCOUNT_EMAIL
 workflows:
   - path: .github/workflows/ci.yml
     triggers:

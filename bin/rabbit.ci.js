@@ -72,6 +72,10 @@ function unique(values) {
   return [...new Set(values)];
 }
 
+function names(response, field) {
+  return (response?.[field] || []).map((entry) => entry.name).filter(Boolean);
+}
+
 function withoutDescriptions(value) {
   if (Array.isArray(value)) return value.map(withoutDescriptions);
   if (value && typeof value === 'object') {
@@ -150,7 +154,19 @@ function branchRules(rules) {
   }, {});
 }
 
-function resolveEnvironment(slug, environment, protectedBranches) {
+function defaultEnvironment(inherited) {
+  return {
+    name: 'default',
+    branches: ['*'],
+    approvals: [],
+    wait_minutes: 0,
+    admin_bypass: true,
+    secrets: inherited.secrets,
+    variables: inherited.variables
+  };
+}
+
+function resolveEnvironment(slug, environment, protectedBranches, inherited) {
   const encoded = encodeURIComponent(environment);
   const details = githubApi(`repos/${slug}/environments/${encoded}`) || {};
   const policy = details.deployment_branch_policy || {};
@@ -175,8 +191,8 @@ function resolveEnvironment(slug, environment, protectedBranches) {
     approvals: reviewers,
     wait_minutes: timer?.wait_timer ?? timer?.wait_timer_minutes ?? 0,
     admin_bypass: details.can_admins_bypass ?? false,
-    secrets: (secrets.secrets || []).map((secret) => secret.name).filter(Boolean),
-    variables: (variables.variables || []).map((variable) => variable.name).filter(Boolean)
+    secrets: unique([...inherited.secrets, ...names(secrets, 'secrets')]),
+    variables: unique([...inherited.variables, ...names(variables, 'variables')])
   };
 }
 
@@ -207,12 +223,29 @@ function resolveRepository(root) {
     name,
     rules: slug && metadata ? branchRules(githubApi(`repos/${slug}/rules/branches/${encodeURIComponent(name)}`) || []) : {}
   }));
-  const environments = slug && metadata
-    ? (githubApi(`repos/${slug}/environments?per_page=100`)?.environments || [])
-        .map((environment) => environment.name)
-        .filter(Boolean)
-        .map((environment) => resolveEnvironment(slug, environment, protectedBranches))
-    : [];
+  const inherited = slug && metadata
+    ? {
+        secrets: unique([
+          ...names(githubApi(`repos/${slug}/actions/organization-secrets?per_page=100`), 'secrets'),
+          ...names(githubApi(`repos/${slug}/actions/secrets?per_page=100`), 'secrets')
+        ]),
+        variables: unique([
+          ...names(githubApi(`repos/${slug}/actions/organization-variables?per_page=100`), 'variables'),
+          ...names(githubApi(`repos/${slug}/actions/variables?per_page=100`), 'variables')
+        ])
+      }
+    : { secrets: [], variables: [] };
+  const environmentResponse = slug && metadata
+    ? githubApi(`repos/${slug}/environments?per_page=100`)
+    : null;
+  const environmentNames = names(environmentResponse, 'environments');
+  const environments = environmentResponse
+    ? environmentNames.length
+      ? environmentNames.map((environment) => resolveEnvironment(slug, environment, protectedBranches, inherited))
+      : [defaultEnvironment(inherited)]
+    : !slug
+      ? [defaultEnvironment(inherited)]
+      : [];
 
   return {
     kind: 'repo',

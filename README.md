@@ -48,7 +48,7 @@ variable values are never written; only their names are included.
 The resolution contains executable repository facts:
 
 - branch names and effective GitHub rules;
-- environments, deployment branch policies, approvals, and secret/variable names;
+- environments, deployment branch policies, approvals, and effective secret/variable names;
 - workflow paths, triggers, and workflow-level permissions.
 
 Read the [repository resolution](docs/repo-resolution.md),

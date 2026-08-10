@@ -17,13 +17,19 @@ The generated resolution contains portable facts that belong with the
 repository: branch rules, environments, and workflow triggers. It never stores
 credentials, secret values, variable values, or workflow-run state.
 
+Secret and variable names are resolved from organization, repository, and
+environment scopes without reading their values. A generated `default`
+environment represents repositories that have no GitHub Environments.
+
 If `.rabbit/context.yaml` is present, the command does not inspect, rewrite, or
 delete it; completing the migration remains a repository-owned reviewed change.
 
 The resolution reports only what it observes. For GitHub, that means:
 
-- no origin, no usable `gh` client, or no repository visibility leaves GitHub
-  lists empty;
+- no GitHub origin produces a generated `default` environment with no inherited
+  GitHub configuration;
+- no usable `gh` client or repository visibility leaves GitHub-discovered
+  configuration empty;
 - a visible repository supplies its branches, rules, and environments.
 
 ## New or local repositories

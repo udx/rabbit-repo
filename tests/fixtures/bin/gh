@@ -9,6 +9,18 @@ case "${*: -1}" in
   */rules/branches/main)
     printf '%s\n' '[{"type":"deletion"},{"type":"pull_request","parameters":{"required_approving_review_count":1,"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_last_push_approval":false,"required_review_thread_resolution":true,"allowed_merge_methods":["squash"]}}]'
     ;;
+  */actions/organization-secrets\?per_page=100)
+    printf '%s\n' '{"secrets":[{"name":"ORG_SECRET"}]}'
+    ;;
+  */actions/secrets\?per_page=100)
+    printf '%s\n' '{"secrets":[{"name":"REPO_SECRET"}]}'
+    ;;
+  */actions/organization-variables\?per_page=100)
+    printf '%s\n' '{"variables":[{"name":"ORG_REGION"}]}'
+    ;;
+  */actions/variables\?per_page=100)
+    printf '%s\n' '{"variables":[{"name":"REPO_REGION"}]}'
+    ;;
   */environments\?per_page=100)
     printf '%s\n' '{"environments":[{"name":"production"}]}'
     ;;
