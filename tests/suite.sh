@@ -34,7 +34,7 @@ node - "$RESOLUTION" <<'NODE' || fail "written YAML did not contain the expected
 const fs = require('node:fs');
 const YAML = require('yaml');
 const resolution = YAML.parse(fs.readFileSync(process.argv[2], 'utf8'));
-if (resolution.kind !== 'repoResolution') process.exit(1);
+if (resolution.kind !== 'repo' || resolution.version !== 'udx.dev/rabbit.ci/repo/v1') process.exit(1);
 if (resolution.repository.name !== 'repo' || resolution.repository.owner !== 'example') process.exit(1);
 if (resolution.branches[0].rules.pull_request.approvals !== 1) process.exit(1);
 if (resolution.environments[0].name !== 'production') process.exit(1);

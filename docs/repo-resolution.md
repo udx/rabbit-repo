@@ -4,8 +4,8 @@
 repository's GitHub delivery shape.
 
 ```yaml
-kind: repoResolution
-version: rabbit.ci/repo-resolution/v1
+kind: repo
+version: udx.dev/rabbit.ci/repo/v1
 repository:
   name: 'example-service'
   owner: 'example-org'

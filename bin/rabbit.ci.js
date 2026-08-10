@@ -6,7 +6,7 @@ const { existsSync, readdirSync, readFileSync, renameSync, writeFileSync, mkdirS
 const { basename, join, relative, resolve } = require('node:path');
 const YAML = require('yaml');
 
-const RESOLUTION_VERSION = 'rabbit.ci/repo-resolution/v1';
+const RESOLUTION_VERSION = 'udx.dev/rabbit.ci/repo/v1';
 const RESOLUTION_RELATIVE_PATH = '.rabbit/repo.yaml';
 
 function usage() {
@@ -215,7 +215,7 @@ function resolveRepository(root) {
     : [];
 
   return {
-    kind: 'repoResolution',
+    kind: 'repo',
     version: RESOLUTION_VERSION,
     repository: owner ? { name: basename(root), owner, default_branch: defaultBranch } : { name: basename(root), default_branch: defaultBranch },
     branches: resolvedBranches,
