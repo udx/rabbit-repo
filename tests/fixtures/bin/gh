@@ -2,4 +2,42 @@
 set -euo pipefail
 
 [ "${1:-}" = "api" ] || exit 1
-printf '%s\n' '{"default_branch":"main","permissions":{"admin":false,"maintain":false,"push":true,"triage":true,"pull":true}}'
+case "${*: -1}" in
+  */branches\?per_page=100)
+    printf '%s\n' '[{"name":"main","protected":true}]'
+    ;;
+  */rules/branches/main)
+    printf '%s\n' '[{"type":"deletion"},{"type":"pull_request","parameters":{"required_approving_review_count":1,"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_last_push_approval":false,"required_review_thread_resolution":true,"allowed_merge_methods":["squash"]}}]'
+    ;;
+  */actions/organization-secrets\?per_page=100)
+    printf '%s\n' '{"secrets":[{"name":"ORG_SECRET"}]}'
+    ;;
+  */actions/secrets\?per_page=100)
+    printf '%s\n' '{"secrets":[{"name":"REPO_SECRET"}]}'
+    ;;
+  */actions/organization-variables\?per_page=100)
+    printf '%s\n' '{"variables":[{"name":"ORG_REGION"}]}'
+    ;;
+  */actions/variables\?per_page=100)
+    printf '%s\n' '{"variables":[{"name":"REPO_REGION"}]}'
+    ;;
+  */environments\?per_page=100)
+    if [ "${RABBIT_TEST_EMPTY_ENVIRONMENTS:-}" = "1" ]; then
+      printf '%s\n' '{"environments":[]}'
+    else
+      printf '%s\n' '{"environments":[{"name":"production"}]}'
+    fi
+    ;;
+  */environments/production/secrets)
+    printf '%s\n' '{"secrets":[{"name":"DEPLOY_TOKEN"}]}'
+    ;;
+  */environments/production/variables)
+    printf '%s\n' '{"variables":[{"name":"DEPLOY_REGION"}]}'
+    ;;
+  */environments/production)
+    printf '%s\n' '{"can_admins_bypass":false,"protection_rules":[{"type":"wait_timer","wait_timer":10}],"deployment_branch_policy":null}'
+    ;;
+  *)
+    printf '%s\n' '{"default_branch":"main","permissions":{"admin":false,"maintain":false,"push":true,"triage":true,"pull":true}}'
+    ;;
+esac
