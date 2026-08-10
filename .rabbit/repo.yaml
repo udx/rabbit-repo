@@ -24,6 +24,22 @@ branches:
         drafts: false
   - name: release/v0.1.3
     rules: {}
+configuration:
+  secrets:
+    organization:
+      - BITBUCKET_TOKEN
+      - CONTEXT7_API_KEY
+      - DEPENDABOT_REVIEWER_TOKEN
+    repository: []
+  variables:
+    organization:
+      - DOCKER_LOGIN
+      - DOCKER_ORG
+      - GCP_PROJECT_ID
+      - GCP_REGION
+      - GCP_WORKLOAD_IDENTITY_PROVIDER
+      - GH_SERVICE_ACCOUNT_EMAIL
+    repository: []
 environments:
   - name: copilot
     branches:
@@ -31,34 +47,16 @@ environments:
     approvals: []
     wait_minutes: 0
     admin_bypass: true
-    secrets:
-      - BITBUCKET_TOKEN
-      - CONTEXT7_API_KEY
-      - DEPENDABOT_REVIEWER_TOKEN
-    variables:
-      - DOCKER_LOGIN
-      - DOCKER_ORG
-      - GCP_PROJECT_ID
-      - GCP_REGION
-      - GCP_WORKLOAD_IDENTITY_PROVIDER
-      - GH_SERVICE_ACCOUNT_EMAIL
+    secrets: []
+    variables: []
   - name: main
     branches:
       - "*"
     approvals: []
     wait_minutes: 0
     admin_bypass: true
-    secrets:
-      - BITBUCKET_TOKEN
-      - CONTEXT7_API_KEY
-      - DEPENDABOT_REVIEWER_TOKEN
-    variables:
-      - DOCKER_LOGIN
-      - DOCKER_ORG
-      - GCP_PROJECT_ID
-      - GCP_REGION
-      - GCP_WORKLOAD_IDENTITY_PROVIDER
-      - GH_SERVICE_ACCOUNT_EMAIL
+    secrets: []
+    variables: []
 workflows:
   - path: .github/workflows/ci.yml
     triggers:

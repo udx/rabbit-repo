@@ -11,17 +11,24 @@ repository:
   owner: 'example-org'
   default_branch: 'main'
 branches: []
+configuration:
+  secrets:
+    organization: []
+    repository: []
+  variables:
+    organization: []
+    repository: []
 environments: []
 workflows: []
 ```
 
-The file contains branch rules, GitHub Environment configuration, and workflow
-triggers. Environment secret and variable names include organization and
-repository names available to the repository; environment names take precedence
-over repository names, which take precedence over organization names. If GitHub
-has no configured environments, `default` is a generated, ungated environment
-with the inherited names. The file excludes tokens, secret values, variable
-values, pull requests, and workflow runs.
+The file contains branch rules, scoped GitHub Actions configuration, GitHub
+Environment configuration, and workflow triggers. `configuration` separates
+organization and repository secret and variable names from real environments.
+Each environment lists only its own names. Consumers apply GitHub's precedence:
+environment, then repository, then organization. An empty `environments` list
+means the repository has no configured GitHub Environments. The file excludes
+tokens, secret values, variable values, pull requests, and workflow runs.
 
 `.rabbit/context.yaml` is legacy. `rabbit.ci` does not read, rewrite, or delete
 it.

@@ -37,9 +37,13 @@ const resolution = YAML.parse(fs.readFileSync(process.argv[2], 'utf8'));
 if (resolution.kind !== 'repo' || resolution.version !== 'udx.dev/rabbit.ci/repo/v1') process.exit(1);
 if (resolution.repository.name !== 'repo' || resolution.repository.owner !== 'example') process.exit(1);
 if (resolution.branches[0].rules.pull_request.approvals !== 1) process.exit(1);
+if (resolution.configuration.secrets.organization.join(',') !== 'ORG_SECRET') process.exit(1);
+if (resolution.configuration.secrets.repository.join(',') !== 'REPO_SECRET') process.exit(1);
+if (resolution.configuration.variables.organization.join(',') !== 'ORG_REGION') process.exit(1);
+if (resolution.configuration.variables.repository.join(',') !== 'REPO_REGION') process.exit(1);
 if (resolution.environments[0].name !== 'production') process.exit(1);
-if (resolution.environments[0].secrets.join(',') !== 'ORG_SECRET,REPO_SECRET,DEPLOY_TOKEN') process.exit(1);
-if (resolution.environments[0].variables.join(',') !== 'ORG_REGION,REPO_REGION,DEPLOY_REGION') process.exit(1);
+if (resolution.environments[0].secrets.join(',') !== 'DEPLOY_TOKEN') process.exit(1);
+if (resolution.environments[0].variables.join(',') !== 'DEPLOY_REGION') process.exit(1);
 if (resolution.workflows[0].path !== '.github/workflows/ci.yml') process.exit(1);
 NODE
 
@@ -55,8 +59,22 @@ NODE
 mkdir -p "$TMP_DIR/repo/nested/directory"
 (cd "$TMP_DIR/repo/nested/directory" && PATH="$MOCK_BIN:$PATH" "$CLI" --json >/dev/null)
 
+no_environments="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR" "$no_environments"' EXIT
+cp -R "$FIXTURE/." "$no_environments/repo"
+git -C "$no_environments/repo" init -q
+git -C "$no_environments/repo" checkout -q -b main
+git -C "$no_environments/repo" remote add origin git@github.com:example/no-environments.git
+json="$(cd "$no_environments/repo" && RABBIT_TEST_EMPTY_ENVIRONMENTS=1 PATH="$MOCK_BIN:$PATH" "$CLI" --json)"
+node - "$json" <<'NODE' || fail "empty environment configuration did not keep inherited names separate"
+const resolution = JSON.parse(process.argv[2]);
+if (resolution.environments.length !== 0) process.exit(1);
+if (resolution.configuration.secrets.organization.join(',') !== 'ORG_SECRET') process.exit(1);
+if (resolution.configuration.secrets.repository.join(',') !== 'REPO_SECRET') process.exit(1);
+NODE
+
 no_origin="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR" "$no_origin"' EXIT
+trap 'rm -rf "$TMP_DIR" "$no_environments" "$no_origin"' EXIT
 cp -R "$FIXTURE/." "$no_origin/repo"
 git -C "$no_origin/repo" init -q
 git -C "$no_origin/repo" checkout -q -b main
@@ -64,7 +82,8 @@ json="$(cd "$no_origin/repo" && "$CLI" --json)"
 yaml="$(cd "$no_origin/repo" && "$CLI" --yaml)"
 node - "$json" <<'NODE' || fail "offline resolution did not keep GitHub lists empty"
 const resolution = JSON.parse(process.argv[2]);
-if (resolution.environments.length !== 1 || resolution.environments[0].name !== 'default') process.exit(1);
+if (resolution.environments.length !== 0) process.exit(1);
+if (resolution.configuration.secrets.organization.length !== 0 || resolution.configuration.variables.repository.length !== 0) process.exit(1);
 if (resolution.repository.owner !== undefined) process.exit(1);
 NODE
 [ ! -e "$no_origin/repo/.rabbit/repo.yaml" ] || fail "output modes wrote a resolution file"

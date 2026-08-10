@@ -22,7 +22,11 @@ case "${*: -1}" in
     printf '%s\n' '{"variables":[{"name":"REPO_REGION"}]}'
     ;;
   */environments\?per_page=100)
-    printf '%s\n' '{"environments":[{"name":"production"}]}'
+    if [ "${RABBIT_TEST_EMPTY_ENVIRONMENTS:-}" = "1" ]; then
+      printf '%s\n' '{"environments":[]}'
+    else
+      printf '%s\n' '{"environments":[{"name":"production"}]}'
+    fi
     ;;
   */environments/production/secrets)
     printf '%s\n' '{"secrets":[{"name":"DEPLOY_TOKEN"}]}'

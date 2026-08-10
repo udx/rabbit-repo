@@ -154,19 +154,7 @@ function branchRules(rules) {
   }, {});
 }
 
-function defaultEnvironment(inherited) {
-  return {
-    name: 'default',
-    branches: ['*'],
-    approvals: [],
-    wait_minutes: 0,
-    admin_bypass: true,
-    secrets: inherited.secrets,
-    variables: inherited.variables
-  };
-}
-
-function resolveEnvironment(slug, environment, protectedBranches, inherited) {
+function resolveEnvironment(slug, environment, protectedBranches) {
   const encoded = encodeURIComponent(environment);
   const details = githubApi(`repos/${slug}/environments/${encoded}`) || {};
   const policy = details.deployment_branch_policy || {};
@@ -191,8 +179,8 @@ function resolveEnvironment(slug, environment, protectedBranches, inherited) {
     approvals: reviewers,
     wait_minutes: timer?.wait_timer ?? timer?.wait_timer_minutes ?? 0,
     admin_bypass: details.can_admins_bypass ?? false,
-    secrets: unique([...inherited.secrets, ...names(secrets, 'secrets')]),
-    variables: unique([...inherited.variables, ...names(variables, 'variables')])
+    secrets: names(secrets, 'secrets'),
+    variables: names(variables, 'variables')
   };
 }
 
@@ -223,35 +211,31 @@ function resolveRepository(root) {
     name,
     rules: slug && metadata ? branchRules(githubApi(`repos/${slug}/rules/branches/${encodeURIComponent(name)}`) || []) : {}
   }));
-  const inherited = slug && metadata
+  const configuration = slug && metadata
     ? {
-        secrets: unique([
-          ...names(githubApi(`repos/${slug}/actions/organization-secrets?per_page=100`), 'secrets'),
-          ...names(githubApi(`repos/${slug}/actions/secrets?per_page=100`), 'secrets')
-        ]),
-        variables: unique([
-          ...names(githubApi(`repos/${slug}/actions/organization-variables?per_page=100`), 'variables'),
-          ...names(githubApi(`repos/${slug}/actions/variables?per_page=100`), 'variables')
-        ])
+        secrets: {
+          organization: names(githubApi(`repos/${slug}/actions/organization-secrets?per_page=100`), 'secrets'),
+          repository: names(githubApi(`repos/${slug}/actions/secrets?per_page=100`), 'secrets')
+        },
+        variables: {
+          organization: names(githubApi(`repos/${slug}/actions/organization-variables?per_page=100`), 'variables'),
+          repository: names(githubApi(`repos/${slug}/actions/variables?per_page=100`), 'variables')
+        }
       }
-    : { secrets: [], variables: [] };
+    : { secrets: { organization: [], repository: [] }, variables: { organization: [], repository: [] } };
   const environmentResponse = slug && metadata
     ? githubApi(`repos/${slug}/environments?per_page=100`)
     : null;
   const environmentNames = names(environmentResponse, 'environments');
-  const environments = environmentResponse
-    ? environmentNames.length
-      ? environmentNames.map((environment) => resolveEnvironment(slug, environment, protectedBranches, inherited))
-      : [defaultEnvironment(inherited)]
-    : !slug
-      ? [defaultEnvironment(inherited)]
-      : [];
+  const environments = environmentNames
+    .map((environment) => resolveEnvironment(slug, environment, protectedBranches));
 
   return {
     kind: 'repo',
     version: RESOLUTION_VERSION,
     repository: owner ? { name: basename(root), owner, default_branch: defaultBranch } : { name: basename(root), default_branch: defaultBranch },
     branches: resolvedBranches,
+    configuration,
     environments,
     workflows: resolveWorkflows(root)
   };
